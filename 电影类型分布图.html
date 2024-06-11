@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="UTF-8">
+    <title>电影类型分布图</title>
+    <!-- 引入 ECharts 和 d3.js -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body style="height: 100%; margin: 0; display: flex; flex-direction: column">
+    <!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+    <div style="padding: 10px;">
+        <label for="languageSelect">选择语言:</label>
+        <select id="languageSelect">
+            <option value="英语">英语</option>
+            <option value="汉语普通话">汉语普通话</option>
+            <option value="日语">日语</option>
+            <option value="法语">法语</option>
+            <option value="德语">德语</option>
+            <option value="意大利语">意大利语</option>
+            <option value="西班牙语">西班牙语</option>
+            <option value="韩语">韩语</option>
+            <option value="粤语">粤语</option>
+            <option value="葡萄牙语">葡萄牙语</option>
+        </select>
+    </div>
+    <div id="main" style="flex-grow: 1;"></div>
+    <script>
+        // 基于准备好的 DOM，初始化 ECharts 实例
+        var myChart = echarts.init(document.getElementById('main'));
+
+        // 使用 d3.js 读取 CSV 文件
+        d3.csv('./movies-1.csv').then(function(data) {
+            // 检查数据是否读取正确
+            console.log(data);
+
+            // 创建一个函数来更新图表
+            function updateChart(language) {
+                // 创建一个对象来存储每种类型的电影数量
+                var genreCounts = {};
+
+                // 遍历 CSV 数据，统计选择语言的每种类型的电影数量
+                data.forEach(function(d) {
+                    var languages = d.LANGUAGES.split('/');
+                    if (languages.includes(language)) {
+                        var genres = d.GENRES.split(/\/|,|\s+/); // 处理多个类型，分隔符为斜杠、逗号或空格
+                        genres.forEach(function(genre) {
+                            genre = genre.trim(); // 去除可能的空格
+                            if (genre) { // 确保类型非空
+                                if (genreCounts[genre]) {
+                                    genreCounts[genre]++;
+                                } else {
+                                    genreCounts[genre] = 1;
+                                }
+                            }
+                        });
+                    }
+                });
+
+                // 将类型和对应数量转换为数组
+                var genreArray = [];
+                for (var genre in genreCounts) {
+                    genreArray.push({
+                        name: genre,
+                        value: genreCounts[genre]
+                    });
+                }
+
+                // 按数量从大到小排序，并选择前20个类型
+                genreArray.sort(function(a, b) {
+                    return b.value - a.value;
+                });
+                var top20Genres = genreArray.slice(0, 20);
+
+                // 获取图例数据
+                var legendData = top20Genres.map(function(item) {
+                    return item.name;
+                });
+
+                // 图例分为两列
+                var mid = Math.ceil(legendData.length / 2);
+                var legendDataLeft = legendData.slice(0, mid);
+                var legendDataRight = legendData.slice(mid);
+
+                // 指定图表的配置项和数据
+                var option = {
+                    title: {
+                        text: language + ' 电影类型分布',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'item'
+                    },
+                    legend: [
+                        {
+                            orient: 'vertical',
+                            left: '65%', // 调整左列图例的位置
+                            top: 'middle',
+                            data: legendDataLeft
+                        },
+                        {
+                            orient: 'vertical',
+                            left: '80%', // 调整右列图例的位置
+                            top: 'middle',
+                            data: legendDataRight
+                        }
+                    ],
+                    series: [
+                        {
+                            name: '类型',
+                            type: 'pie',
+                            radius: '50%',
+                            center: ['35%', '50%'], // 调整饼图的中心位置
+                            data: top20Genres,
+                            emphasis: {
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }
+                    ]
+                };
+
+                // 使用刚指定的配置项和数据显示图表
+                myChart.setOption(option);
+            }
+
+            // 获取下拉菜单元素
+            var languageSelect = document.getElementById('languageSelect');
+
+            // 添加事件监听器，当选择改变时更新图表
+            languageSelect.addEventListener('change', function() {
+                var selectedLanguage = languageSelect.value;
+                updateChart(selectedLanguage);
+            });
+
+            // 初始化时显示英语电影类型分布图
+            updateChart('英语');
+        }).catch(function(error) {
+            console.error('Error loading or parsing data:', error);
+        });
+    </script>
+</body>
+</html>

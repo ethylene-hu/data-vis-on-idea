@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="UTF-8">
+    <title>电影评分柱状图</title>
+    <!-- 引入 ECharts 和 d3.js -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body style="height: 100%; margin: 0; display: flex; flex-direction: column">
+    <!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+    <div style="padding: 10px;">
+        <label for="languageSelect">选择语言:</label>
+        <select id="languageSelect">
+            <option value="英语">英语</option>
+            <option value="汉语普通话">汉语普通话</option>
+            <option value="日语">日语</option>
+            <option value="法语">法语</option>
+            <option value="德语">德语</option>
+            <option value="意大利语">意大利语</option>
+            <option value="西班牙语">西班牙语</option>
+            <option value="韩语">韩语</option>
+            <option value="粤语">粤语</option>
+            <option value="葡萄牙语">葡萄牙语</option>
+        </select>
+    </div>
+    <div id="main" style="flex-grow: 1;"></div>
+    <script>
+        // 基于准备好的 DOM，初始化 ECharts 实例
+        var myChart = echarts.init(document.getElementById('main'));
+
+        // 使用 d3.js 读取 CSV 文件
+        d3.csv('./movies-1.csv').then(function(data) {
+            // 检查数据是否读取正确
+            console.log(data);
+
+            // 创建一个函数来更新图表
+            function updateChart(language) {
+                // 创建一个数组来存储选择语言的电影评分
+                var scores = [];
+
+                // 遍历 CSV 数据，提取选择语言的电影评分
+                data.forEach(function(d) {
+                    var languages = d.LANGUAGES.split('/');
+                    var score = parseFloat(d.DOUBAN_SCORE);
+
+                    // 判断是否为选择语言的电影
+                    if (languages.includes(language)) {
+                        scores.push(score);
+                    }
+                });
+
+                // 对评分数据进行排序
+                scores.sort(function(a, b) {
+                    return a - b;
+                });
+
+                // 输出处理后的数据进行调试
+                console.log(language + ' Scores:', scores);
+
+                // 统计评分数据，计算每个评分的数量
+                var scoreCounts = {};
+                scores.forEach(function(score) {
+                    if (scoreCounts[score]) {
+                        scoreCounts[score]++;
+                    } else {
+                        scoreCounts[score] = 1;
+                    }
+                });
+
+                // 将评分数据转换为柱状图需要的数据格式
+                var xAxisData = Object.keys(scoreCounts).map(function(score) {
+                    return parseFloat(score);
+                });
+                var seriesData = Object.values(scoreCounts);
+
+                // 按照xAxisData的顺序，对seriesData进行排序
+                var sortedData = xAxisData.map((score, index) => {
+                    return { score: score, count: seriesData[index] };
+                });
+
+                // 对 sortedData 进行排序
+                sortedData.sort(function(a, b) {
+                    return a.score - b.score;
+                });
+
+                // 提取排序后的xAxisData和seriesData
+                xAxisData = sortedData.map(item => item.score);
+                seriesData = sortedData.map(item => item.count);
+
+                // 输出转换后的数据进行调试
+                console.log('X Axis Data:', xAxisData);
+                console.log('Series Data:', seriesData);
+
+                // 指定图表的配置项和数据
+                var option = {
+                    title: {
+                        text: language + ' 电影评分柱状图',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        name: '评分',
+                        data: xAxisData,
+                        axisLabel: {
+                            formatter: '{value} 分'
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: '数量'
+                    },
+                    series: [{
+                        data: seriesData,
+                        type: 'bar',
+                        label: {
+                            show: true,
+                            position: 'top'
+                        }
+                    }]
+                };
+
+                // 使用刚指定的配置项和数据显示图表
+                myChart.setOption(option);
+            }
+
+            // 获取下拉菜单元素
+            var languageSelect = document.getElementById('languageSelect');
+
+            // 添加事件监听器，当选择改变时更新图表
+            languageSelect.addEventListener('change', function() {
+                var selectedLanguage = languageSelect.value;
+                updateChart(selectedLanguage);
+            });
+
+            // 初始化时显示英语电影评分柱状图
+            updateChart('英语');
+        }).catch(function(error) {
+            console.error('Error loading or parsing data:', error);
+        });
+    </script>
+</body>
+</html>
