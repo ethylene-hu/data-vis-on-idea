@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <meta charset="UTF-8">
+    <title>电影语言数量前十的柱状图</title>
+    <!-- 引入 ECharts 和 d3.js -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+    <!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+    <div id="main" style="width: 100%; height: 100%;"></div>
+    <script>
+        // 基于准备好的 DOM，初始化 ECharts 实例
+        var myChart = echarts.init(document.getElementById('main'));
+
+        // 使用 d3.js 读取 CSV 文件
+        d3.csv('./movies-1.csv').then(function(data) {
+            // 检查数据是否读取正确
+            console.log(data);
+
+            // 创建一个对象来存储每种语言的电影数量
+            var languageCounts = {};
+
+            // 遍历 CSV 数据，统计每种语言的电影数量
+            data.forEach(function(d) {
+                var languages = d.LANGUAGES.split(/\/|,|\s+/); // 处理多个语言，分隔符为斜杠、逗号或空格
+                languages.forEach(function(language) {
+                    language = language.trim(); // 去除可能的空格
+                    if (language) { // 确保语言非空
+                        if (languageCounts[language]) {
+                            languageCounts[language]++;
+                        } else {
+                            languageCounts[language] = 1;
+                        }
+                    }
+                });
+            });
+
+            // 将语言数据转换为数组，并按数量降序排列
+            var sortedLanguages = Object.entries(languageCounts)
+                                        .sort((a, b) => b[1] - a[1])
+                                        .slice(0, 10);
+
+            // 分离语言名称和对应的数量
+            var languages = sortedLanguages.map(item => item[0]);
+            var counts = sortedLanguages.map(item => item[1]);
+
+            // 指定图表的配置项和数据
+            var option = {
+                title: {
+                    text: '电影语言数量前十',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { // 坐标轴指示器，坐标轴触发有效
+                        type: 'shadow' // 默认为直线，可选为：'line' | 'shadow'
+                    }
+                },
+                xAxis: {
+                    type: 'value',
+                    boundaryGap: [0, 0.01]
+                },
+                yAxis: {
+                    type: 'category',
+                    data: languages.reverse() // 反转顺序，使数量最多的在最上面
+                },
+                series: [
+                    {
+                        name: '数量',
+                        type: 'bar',
+                        data: counts.reverse() // 反转顺序，使数量最多的在最上面
+                    }
+                ]
+            };
+
+            // 使用刚指定的配置项和数据显示图表
+            myChart.setOption(option);
+        }).catch(function(error) {
+            console.error('Error loading or parsing data:', error);
+        });
+    </script>
+</body>
+</html>
